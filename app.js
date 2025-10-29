@@ -12,6 +12,7 @@
   const dueInput = $("#dueInput");
   const priorityInput = $("#priorityInput");
   const tagsInput = $("#tagsInput");
+  const imageInput = $("#imageInput");
   const listEl = $("#taskList");
   const emptyState = $("#emptyState");
 
@@ -37,7 +38,7 @@
   });
 
   // Add task
-  addForm.addEventListener("submit", e => {
+  addForm.addEventListener("submit", async e => {
     e.preventDefault();
     const title = titleInput.value.trim();
     if(!title) return;
@@ -47,14 +48,33 @@
     const titleTags = parseHashtags(title);
     const allTags = Array.from(new Set([...titleTags, ...extraTags]));
 
+    let attachment = null;
+    const file = imageInput?.files?.[0];
+    if (file) {
+      try {
+        const dataUrl = await fileToDataURL(file);
+        attachment = {
+          name: file.name,
+          type: file.type,
+          size: file.size,
+          data: dataUrl
+        };
+      } catch(err) {
+        alert("Could not read image: " + err.message);
+        return;
+      }
+    }
+
     const now = Date.now();
     tasks.push({
       id: String(now) + "-" + Math.random().toString(36).slice(2,8),
       title, notes: "", due, priority, tags: allTags, completed: false,
-      createdAt: now, updatedAt: now
+      createdAt: now, updatedAt: now,
+      attachment
     });
     saveTasks();
     addForm.reset();
+    if (imageInput) imageInput.value = "";
     render();
   });
 
@@ -117,8 +137,9 @@
     const when = filterWhen.value;
 
     let filtered = all.filter(t => {
-      const q = !query || (t.title.toLowerCase().includes(query) || (t.notes||"").toLowerCase().includes(query) || t.tags.some(x => x.toLowerCase().includes(query)));
-      const tagOk = !tag || t.tags.includes(tag);
+      const tagList = Array.isArray(t.tags) ? t.tags : [];
+      const q = !query || (t.title.toLowerCase().includes(query) || (t.notes||"").toLowerCase().includes(query) || tagList.some(x => x.toLowerCase().includes(query)));
+      const tagOk = !tag || tagList.includes(tag);
       let whenOk = true;
       const todayStr = new Date().toISOString().slice(0,10);
       if (when === "completed") whenOk = t.completed;
@@ -139,7 +160,7 @@
     filtered.sort(cmp);
 
     // Build tag filter
-    const tags = Array.from(new Set(all.flatMap(t => t.tags))).sort((a,b)=>a.localeCompare(b));
+    const tags = Array.from(new Set(all.flatMap(t => Array.isArray(t.tags) ? t.tags : []))).sort((a,b)=>a.localeCompare(b));
     filterTag.innerHTML = '<option value="">All tags</option>' + tags.map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join("");
     if (tag && !tags.includes(tag)) filterTag.value = "";
 
@@ -173,7 +194,8 @@
     meta.className = "meta";
     const tagsEl = document.createElement("div");
     tagsEl.className = "tags";
-    t.tags.forEach(tag => {
+    const tagList = Array.isArray(t.tags) ? t.tags : [];
+    tagList.forEach(tag => {
       const span = document.createElement("span");
       span.className = "tag"; span.textContent = "#" + tag;
       tagsEl.appendChild(span);
@@ -192,6 +214,29 @@
     meta.appendChild(pr);
 
     mid.appendChild(meta);
+
+    if (t.attachment && t.attachment.data) {
+      const attachment = document.createElement("div");
+      attachment.className = "attachment";
+      const link = document.createElement("a");
+      link.href = t.attachment.data;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      if (t.attachment.name) link.download = t.attachment.name;
+      const img = document.createElement("img");
+      img.src = t.attachment.data;
+      img.alt = t.attachment.name ? `Attachment: ${t.attachment.name}` : "Task attachment";
+      img.loading = "lazy";
+      link.appendChild(img);
+      attachment.appendChild(link);
+      if (t.attachment.name) {
+        const caption = document.createElement("span");
+        caption.className = "attachment-name";
+        caption.textContent = t.attachment.name;
+        attachment.appendChild(caption);
+      }
+      mid.appendChild(attachment);
+    }
 
     const right = document.createElement("div");
     right.className = "actions";
@@ -256,6 +301,19 @@
   }
   function byCreated(a,b){ return (b.createdAt||0) - (a.createdAt||0) }
   function escapeHtml(s){ return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])) }
+
+  function fileToDataURL(file){
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = reader.result;
+        if (typeof result === "string") resolve(result);
+        else reject(new Error("Unsupported file result"));
+      };
+      reader.onerror = () => reject(reader.error || new Error("Failed to read file"));
+      reader.readAsDataURL(file);
+    });
+  }
 
   // Initial render
   render();
