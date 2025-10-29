@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Todo Breeze</title>
+  <meta name="description" content="A tiny, offline-first, no-backend todo PWA that runs anywhere." />
+  <meta name="theme-color" content="#0f172a" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" href="icons/icon-192.png" sizes="192x192" />
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="app-header">
+    <div class="brand">
+      <span class="logo">🗒️</span>
+      <h1>Todo Breeze</h1>
+    </div>
+    <div class="actions">
+      <button id="themeToggle" aria-label="Toggle theme" title="Toggle theme">🌙</button>
+      <button id="exportBtn" title="Export tasks">Export</button>
+      <label class="import-label">
+        <input id="importFile" type="file" accept="application/json" hidden />
+        <span>Import</span>
+      </label>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="panel add">
+      <h2>Add a task</h2>
+      <form id="addForm">
+        <input id="titleInput" type="text" placeholder="Task title (use #tags in title)" required />
+        <input id="dueInput" type="date" />
+        <select id="priorityInput" aria-label="Priority">
+          <option value="none">Priority: none</option>
+          <option value="low">Low</option>
+          <option value="medium" selected>Medium</option>
+          <option value="high">High</option>
+        </select>
+        <input id="tagsInput" type="text" placeholder="Extra tags (comma separated)" />
+        <button type="submit">Add</button>
+      </form>
+    </section>
+
+    <section class="panel controls">
+      <h2>Find & filter</h2>
+      <div class="controls-grid">
+        <input id="searchInput" type="search" placeholder="Search title/notes/tags…" />
+        <select id="filterTag">
+          <option value="">All tags</option>
+        </select>
+        <select id="filterWhen">
+          <option value="all">All dates</option>
+          <option value="today">Due today</option>
+          <option value="overdue">Overdue</option>
+          <option value="upcoming">Upcoming</option>
+          <option value="completed">Completed</option>
+          <option value="active">Active (not completed)</option>
+        </select>
+        <select id="sortBy">
+          <option value="priority">Sort: Priority</option>
+          <option value="due">Sort: Due date</option>
+          <option value="created">Sort: Created</option>
+          <option value="title">Sort: Title</option>
+        </select>
+      </div>
+    </section>
+
+    <section class="panel list">
+      <h2>Your tasks</h2>
+      <ul id="taskList" class="tasks" aria-live="polite"></ul>
+      <div class="empty" id="emptyState">No tasks yet. Add one above or <button id="seedBtn" class="linklike">load sample data</button>.</div>
+    </section>
+  </main>
+
+  <footer class="app-footer">
+    <span>Offline‑first • Local only • PWA</span>
+    <a href="https://github.com" target="_blank" rel="noreferrer">Source</a>
+  </footer>
+
+  <script src="app.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').catch(console.error);
+      });
+    }
+  </script>
+</body>
+</html>
