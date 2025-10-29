@@ -1,0 +1,42 @@
+[
+  {
+    "id": "seed-1",
+    "title": "Set up GitHub Pages #setup",
+    "notes": "Create a repo, upload files, enable Pages.",
+    "due": "2025-10-30",
+    "priority": "high",
+    "tags": [
+      "setup"
+    ],
+    "completed": false,
+    "createdAt": 1761738986018,
+    "updatedAt": 1761738986018
+  },
+  {
+    "id": "seed-2",
+    "title": "Add two real tasks #demo",
+    "notes": "",
+    "due": null,
+    "priority": "medium",
+    "tags": [
+      "demo"
+    ],
+    "completed": false,
+    "createdAt": 1761738986018,
+    "updatedAt": 1761738986018
+  },
+  {
+    "id": "seed-3",
+    "title": "Try dark mode \ud83c\udf19",
+    "notes": "",
+    "due": null,
+    "priority": "low",
+    "tags": [
+      "demo",
+      "ui"
+    ],
+    "completed": false,
+    "createdAt": 1761738986018,
+    "updatedAt": 1761738986018
+  }
+]
