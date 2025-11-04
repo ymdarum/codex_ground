@@ -20,6 +20,7 @@
     <div class="actions">
       <button id="themeToggle" aria-label="Toggle theme" title="Toggle theme">🌙</button>
       <button id="exportBtn" title="Export tasks">Export</button>
+      <button id="icsExportBtn" title="Download calendar reminders">Calendar (.ics)</button>
       <label class="import-label">
         <input id="importFile" type="file" accept="application/json" hidden />
         <span>Import</span>
@@ -40,6 +41,13 @@
           <option value="high">High</option>
         </select>
         <input id="tagsInput" type="text" placeholder="Extra tags (comma separated)" />
+        <textarea id="subtasksInput" class="full-width" placeholder="Subtasks (one per line)" rows="2"></textarea>
+        <select id="recurrenceInput" class="full-width" aria-label="Recurrence">
+          <option value="none" selected>Does not repeat</option>
+          <option value="daily">Repeats daily</option>
+          <option value="weekly">Repeats weekly</option>
+          <option value="monthly">Repeats monthly</option>
+        </select>
         <div class="file-field full-width">
           <label for="imageInput">Attach image (optional)</label>
           <input id="imageInput" type="file" accept="image/*" />
@@ -64,6 +72,7 @@
           <option value="active">Active (not completed)</option>
         </select>
         <select id="sortBy">
+          <option value="manual">Sort: Manual order</option>
           <option value="priority">Sort: Priority</option>
           <option value="due">Sort: Due date</option>
           <option value="created">Sort: Created</option>
