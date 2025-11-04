@@ -35,7 +35,11 @@ a{color:var(--accent)}
   display:flex; align-items:center; justify-content:space-between;
   padding:12px 16px; background:var(--card); border-bottom:1px solid var(--border);
 }
-.app-footer{border-top:1px solid var(--border); border-bottom:none; margin-top:auto}
+.app-footer{
+  border-top:1px solid var(--border); border-bottom:none; margin-top:auto;
+  flex-wrap:wrap; gap:8px;
+}
+.app-footer .update-note{flex-basis:100%; font-size:.8rem; color:var(--muted);}
 
 .storage-info{display:flex; gap:8px; align-items:center; font-size:.85rem; color:var(--muted)}
 .storage-info button{
@@ -47,7 +51,7 @@ a{color:var(--accent)}
 .brand .logo{font-size:1.4rem}
 .brand h1{font-size:1.1rem; margin:0}
 
-.actions{display:flex; gap:8px; align-items:center}
+.actions{display:flex; gap:8px; align-items:center; flex-wrap:wrap}
 .actions button, .actions .import-label span{
   background:transparent; color:var(--fg); border:1px solid var(--border);
   padding:6px 10px; border-radius:8px; cursor:pointer;
@@ -75,11 +79,12 @@ a{color:var(--accent)}
   .controls-grid{grid-template-columns:1fr 1fr}
 }
 
-input, select, button{
+input, select, button, textarea{
   padding:10px; border-radius:10px; border:1px solid var(--border);
   background:transparent; color:var(--fg);
 }
 input[type="date"]{color-scheme:dark light}
+textarea{resize:vertical; min-height:70px}
 button{cursor:pointer}
 button.linklike{background:none; border:none; padding:0; color:var(--accent)}
 
@@ -88,10 +93,21 @@ button.linklike{background:none; border:none; padding:0; color:var(--accent)}
   display:grid; grid-template-columns:auto 1fr auto; gap:8px; align-items:center;
   border:1px solid var(--border); border-radius:12px; padding:10px; background:rgba(255,255,255,0.02)
 }
+.task .left{display:flex; flex-direction:column; align-items:center; gap:4px}
+.task.dragging{opacity:.4}
 .task .title{font-weight:600}
 .task .meta{font-size:.85rem; color:var(--muted); display:flex; flex-wrap:wrap; gap:8px}
 .task .tags{display:flex; gap:6px; flex-wrap:wrap}
 .tag{padding:2px 8px; border-radius:999px; border:1px solid var(--border); font-size:.75rem; color:var(--muted)}
+
+.task .subtasks{margin:8px 0 0 0; padding-left:0; list-style:none; display:grid; gap:4px}
+.task .subtasks li{display:flex; align-items:center; gap:8px; font-size:.9rem}
+.task .subtasks input[type="checkbox"]{width:16px; height:16px}
+.task .subtasks label{flex:1}
+.task .subtasks input[type="checkbox"]:checked + label{text-decoration:line-through; opacity:.7}
+.task .recurrence{margin-top:6px; font-size:.75rem; color:var(--muted)}
+.task .drag-handle{cursor:grab; color:var(--muted); padding:4px 6px; user-select:none}
+.task .drag-handle:active{cursor:grabbing}
 
 .badge{font-size:.75rem; padding:2px 8px; border-radius:999px; border:1px solid var(--border)}
 .badge.ok{color:var(--ok)}
@@ -100,6 +116,7 @@ button.linklike{background:none; border:none; padding:0; color:var(--accent)}
 
 .task .actions{display:flex; gap:6px}
 .task .actions button{padding:6px 8px}
+.task .actions .secondary{background:transparent; border-color:var(--border); color:var(--muted)}
 
 .task .attachment{margin-top:8px; display:flex; flex-direction:column; gap:4px; max-width:220px}
 .task .attachment a{display:inline-block}
