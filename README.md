@@ -14,6 +14,7 @@ A tiny, **offline‑first**, no‑backend **todo app** you can publish straight 
 - ✅ Import / export tasks as JSON
 - ✅ Works **offline** (service worker)
 - ✅ **PWA**: Add to Home Screen (iOS & Android)
+- ✅ Auto-refreshes itself when you publish an update
 
 ## Live Demo (after you enable Pages)
 Your site will be available at: `https://<your-username>.github.io/<your-repo>/`
@@ -81,6 +82,12 @@ todobreeze-pwa/
 - **Export**: tap **Export** to download a JSON file.
 - **Import**: tap **Import** and select a previously exported JSON file.
 - **Sample data**: click **load sample data** under the task list.
+
+## 4.1) How updates roll out
+- The service worker precaches the core files listed in `sw.js`.
+- When you ship a change, bump the `CACHE_NAME` in `sw.js` to ensure the new bundle is cached separately.
+- Open tabs detect when a fresh worker is ready, ask it to activate right away, and reload themselves after the update is in control.
+- The first visit stays on the same page (no unexpected refresh) while still taking advantage of the new worker afterward.
 
 ## 5) Privacy
 All data lives **only in your browser** (`localStorage`). No servers, no tracking.
