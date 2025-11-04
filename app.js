@@ -25,9 +25,6 @@
   const importFile = $("#importFile");
   const seedBtn = $("#seedBtn");
   const themeToggle = $("#themeToggle");
-  const storageStatus = $("#storageStatus");
-  const storagePersistBtn = $("#storagePersistBtn");
-
   // Theme
   const savedTheme = localStorage.getItem(themeKey);
   if (savedTheme === "light") document.documentElement.classList.add("light");
@@ -288,7 +285,38 @@
   }
 
   function initPersistenceControls(){
+    const footer = $(".app-footer");
+    if (!footer) return;
+
+    let storageInfo = footer.querySelector(".storage-info");
+    if (!storageInfo) {
+      storageInfo = document.createElement("div");
+      storageInfo.className = "storage-info";
+      storageInfo.setAttribute("aria-live", "polite");
+
+      const status = document.createElement("span");
+      status.id = "storageStatus";
+      status.textContent = "Checking storage…";
+
+      const button = document.createElement("button");
+      button.id = "storagePersistBtn";
+      button.type = "button";
+      button.textContent = "Keep data on this device";
+
+      storageInfo.append(status, button);
+
+      const anchor = footer.querySelector("a[href]");
+      if (anchor) {
+        footer.insertBefore(storageInfo, anchor);
+      } else {
+        footer.appendChild(storageInfo);
+      }
+    }
+
+    const storageStatus = storageInfo.querySelector("#storageStatus");
+    const storagePersistBtn = storageInfo.querySelector("#storagePersistBtn");
     if (!storageStatus) return;
+
     if (!navigator.storage || !navigator.storage.persist || !navigator.storage.persisted) {
       storageStatus.textContent = "Storage persistence not supported in this browser.";
       if (storagePersistBtn) storagePersistBtn.remove();
