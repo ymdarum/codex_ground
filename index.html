@@ -98,7 +98,40 @@
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js').catch(console.error);
+        navigator.serviceWorker.register('./sw.js').then((registration) => {
+          function activateNewWorker(worker) {
+            if (!worker) return;
+            worker.postMessage({ type: 'SKIP_WAITING' });
+          }
+
+          if (registration.waiting) {
+            activateNewWorker(registration.waiting);
+          }
+
+          registration.addEventListener('updatefound', () => {
+            const newWorker = registration.installing;
+            if (!newWorker) return;
+            newWorker.addEventListener('statechange', () => {
+              if (newWorker.state === 'installed') {
+                activateNewWorker(newWorker);
+              }
+            });
+          });
+
+          let refreshing = false;
+          let hasController = !!navigator.serviceWorker.controller;
+
+          navigator.serviceWorker.addEventListener('controllerchange', () => {
+            if (!hasController) {
+              hasController = true;
+              return;
+            }
+
+            if (refreshing) return;
+            refreshing = true;
+            window.location.reload();
+          });
+        }).catch(console.error);
       });
     }
   </script>

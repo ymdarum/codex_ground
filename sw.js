@@ -1,5 +1,5 @@
 // Very small service worker for offline support
-const CACHE_NAME = "todobreeze-v1";
+const CACHE_NAME = "todobreeze-v2";
 const CORE = [
   "./",
   "./index.html",
@@ -25,8 +25,33 @@ self.addEventListener("activate", (evt) => {
   self.clients.claim();
 });
 
+self.addEventListener("message", (evt) => {
+  if (evt.data?.type === "SKIP_WAITING") {
+    self.skipWaiting();
+  }
+});
+
 self.addEventListener("fetch", (evt) => {
   const req = evt.request;
+  if (req.mode === "navigate") {
+    evt.respondWith(
+      fetch(req).then(res => {
+        const copy = res.clone();
+        caches.open(CACHE_NAME).then(cache => cache.put("./index.html", copy));
+        return res;
+      }).catch(async () => {
+        const cached = await caches.match("./index.html");
+        if (cached) return cached;
+        return caches.match(req);
+      })
+    );
+    return;
+  }
+
+  if (req.method !== "GET") {
+    return;
+  }
+
   evt.respondWith(
     caches.match(req).then(cached => {
       if (cached) return cached;
