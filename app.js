@@ -5,8 +5,18 @@
 
   const storeKey = "tb.tasks.v1";
   const themeKey = "tb.theme";
-  let tasks = loadTasks();
+  const persistence = createPersistentStore({
+    fileName: "todo-breeze-tasks.json",
+    localStorageKey: storeKey
+  });
+  let tasks = [];
+  let hasLoaded = false;
   let dragTaskId = null;
+  const ready = (async () => {
+    tasks = await loadTasks();
+    hasLoaded = true;
+    render();
+  })();
   const recurrenceValues = new Set(["daily","weekly","monthly"]);
 
   const addForm = $("#addForm");
@@ -46,6 +56,7 @@
   // Add task
   addForm.addEventListener("submit", async e => {
     e.preventDefault();
+    await ready;
     const title = titleInput.value.trim();
     if(!title) return;
     const due = dueInput.value || null;
@@ -93,7 +104,7 @@
     created.updatedAt = now;
     created.position = getNextPosition();
     tasks.push(created);
-    saveTasks();
+    await saveTasks();
     addForm.reset();
     if (imageInput) imageInput.value = "";
     if (recurrenceInput) recurrenceInput.value = "none";
@@ -101,7 +112,8 @@
   });
 
   // Export / Import
-  exportBtn.addEventListener("click", () => {
+  exportBtn.addEventListener("click", async () => {
+    await ready;
     const blob = new Blob([JSON.stringify(tasks, null, 2)], {type: "application/json"});
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -113,7 +125,8 @@
     URL.revokeObjectURL(url);
   });
   if (icsExportBtn) {
-    icsExportBtn.addEventListener("click", () => {
+    icsExportBtn.addEventListener("click", async () => {
+      await ready;
       const ics = buildICS(tasks);
       const blob = new Blob([ics], {type: "text/calendar"});
       const url = URL.createObjectURL(blob);
@@ -130,6 +143,7 @@
     const file = e.target.files?.[0];
     if(!file) return;
     try {
+      await ready;
       const text = await file.text();
       const imported = JSON.parse(text);
       if(!Array.isArray(imported)) throw new Error("Invalid file format");
@@ -145,7 +159,7 @@
         merged.set(normalized.id, normalized);
       }
       tasks = Array.from(merged.values());
-      saveTasks();
+      await saveTasks();
       render();
     } catch(err){
       alert("Import failed: " + err.message);
@@ -157,6 +171,7 @@
   // Seed data
   if (seedBtn) {
     seedBtn.addEventListener("click", async () => {
+      await ready;
       try{
         const res = await fetch("./data/sample-tasks.json");
         const sample = await res.json();
@@ -165,7 +180,7 @@
           raw.id = typeof raw.id === "string" && raw.id ? raw.id : makeId();
           return normalizeTask(raw);
         });
-        saveTasks();
+        await saveTasks();
         render();
       }catch(err){
         alert("Could not load sample data offline. Try again once the app is installed and cached.");
@@ -177,6 +192,16 @@
   [searchInput, filterTag, filterWhen, sortBy].forEach(el => el.addEventListener("input", render));
 
   function render(){
+    if (!hasLoaded) {
+      if (listEl) {
+        listEl.innerHTML = '<li class="loading">Loading…</li>';
+      }
+      if (emptyState) {
+        emptyState.style.display = "none";
+      }
+    }
+    if (!hasLoaded) return;
+
     const all = tasks.slice().sort((a,b) => (a.position || 0) - (b.position || 0));
     const query = (searchInput.value || "").toLowerCase().trim();
     const tag = (filterTag.value || "").trim();
@@ -255,7 +280,7 @@
 
     const cb = document.createElement("input");
     cb.type = "checkbox"; cb.checked = !!t.completed;
-    cb.addEventListener("change", () => {
+    cb.addEventListener("change", async () => {
       const wasCompleted = t.completed;
       t.completed = cb.checked;
       t.updatedAt = Date.now();
@@ -275,7 +300,7 @@
           tasks.push(clone);
         }
       }
-      saveTasks();
+      await saveTasks();
       render();
     });
     left.appendChild(cb);
@@ -322,10 +347,10 @@
         subCb.type = "checkbox";
         subCb.checked = !!sub.completed;
         subCb.id = subId;
-        subCb.addEventListener("change", () => {
+        subCb.addEventListener("change", async () => {
           sub.completed = subCb.checked;
           t.updatedAt = Date.now();
-          saveTasks();
+          await saveTasks();
           render();
         });
         const subLabel = document.createElement("label");
@@ -375,7 +400,7 @@
     addSubBtn.type = "button";
     addSubBtn.textContent = "Add subtask";
     addSubBtn.className = "secondary";
-    addSubBtn.addEventListener("click", () => {
+    addSubBtn.addEventListener("click", async () => {
       const title = prompt("Subtask title:");
       if (title == null) return;
       const trimmed = title.trim();
@@ -385,7 +410,7 @@
       if (!newSub) return;
       t.subtasks.push(newSub);
       t.updatedAt = Date.now();
-      saveTasks();
+      await saveTasks();
       render();
     });
     right.appendChild(addSubBtn);
@@ -397,10 +422,11 @@
 
     const delBtn = document.createElement("button");
     delBtn.textContent = "Delete";
-    delBtn.addEventListener("click", () => {
+    delBtn.addEventListener("click", async () => {
       if (confirm("Delete this task?")) {
         tasks = tasks.filter(x => x.id !== t.id);
-        saveTasks(); render();
+        await saveTasks();
+        render();
       }
     });
     right.appendChild(delBtn);
@@ -439,7 +465,8 @@
     }
   }
 
-  function handleDrop(e){
+  async function handleDrop(e){
+    await ready;
     if (sortBy.value !== "manual") return;
     e.preventDefault();
     const items = $$(".task", listEl);
@@ -447,7 +474,7 @@
     reorderTasks(order);
     dragTaskId = null;
     listEl.querySelectorAll(".task.dragging").forEach(el => el.classList.remove("dragging"));
-    saveTasks();
+    await saveTasks();
     render();
   }
 
@@ -477,7 +504,7 @@
     tasks = reordered;
   }
 
-  function openEditor(t){
+  async function openEditor(t){
     const newTitle = prompt("Title:", t.title);
     if (newTitle === null) return;
     const newDue = prompt("Due date (YYYY-MM-DD or empty):", t.due || "");
@@ -499,22 +526,24 @@
     t.subtasks = parseSubtaskLines(newSubtasks, true, t.subtasks);
     t.notes = newNotes;
     t.updatedAt = Date.now();
-    saveTasks(); render();
+    await saveTasks();
+    render();
   }
 
-  function loadTasks(){
+  async function loadTasks(){
     try{
-      const raw = JSON.parse(localStorage.getItem(storeKey));
+      const raw = await persistence.load();
       if (!Array.isArray(raw)) return [];
       const normalized = raw.map(normalizeTask).filter(Boolean);
       normalized.sort((a,b) => (a.position || 0) - (b.position || 0));
       normalized.forEach((task, idx) => { task.position = idx + 1; });
       return normalized;
-    }catch{
+    }catch(err){
+      console.warn("Failed to load tasks", err);
       return [];
     }
   }
-  function saveTasks(){
+  async function saveTasks(){
     tasks = tasks.map((task, idx) => {
       const normalized = normalizeTask(task);
       if (!normalized) return null;
@@ -522,7 +551,151 @@
       return normalized;
     }).filter(Boolean);
     tasks.forEach((task, idx) => { task.position = idx + 1; });
-    localStorage.setItem(storeKey, JSON.stringify(tasks));
+    await persistence.save(tasks);
+  }
+
+  function createPersistentStore({ fileName, localStorageKey }) {
+    const supportsOPFS = typeof navigator !== "undefined" && !!(navigator.storage && navigator.storage.getDirectory);
+    let directoryPromise = null;
+    let writeQueue = Promise.resolve(true);
+
+    async function ensureDirectoryHandle() {
+      if (!supportsOPFS) return null;
+      if (!directoryPromise) {
+        directoryPromise = navigator.storage.getDirectory().catch(err => {
+          console.warn("Unable to access storage directory", err);
+          return null;
+        });
+      }
+      return directoryPromise;
+    }
+
+    async function getFileHandle(create) {
+      const dir = await ensureDirectoryHandle();
+      if (!dir) return null;
+      try {
+        return await dir.getFileHandle(fileName, { create });
+      } catch (err) {
+        if (err?.name === "NotFoundError" && !create) return null;
+        console.warn("Unable to get file handle", err);
+        return null;
+      }
+    }
+
+    async function ensurePermission(handle, mode) {
+      if (!handle) return "denied";
+      if (typeof handle.queryPermission === "function") {
+        try {
+          const status = await handle.queryPermission({ mode });
+          if (status === "granted" || status === "denied") return status;
+        } catch {}
+      }
+      if (typeof handle.requestPermission === "function") {
+        try {
+          return await handle.requestPermission({ mode });
+        } catch {}
+      }
+      return "granted";
+    }
+
+    async function readFromFileSystem() {
+      const handle = await getFileHandle(false);
+      if (!handle) return null;
+      const permission = await ensurePermission(handle, "read");
+      if (permission === "denied") return null;
+      try {
+        const file = await handle.getFile();
+        const text = await file.text();
+        if (!text) return [];
+        return JSON.parse(text);
+      } catch (err) {
+        console.warn("Failed to read persistent tasks", err);
+        return null;
+      }
+    }
+
+    async function writeToFileSystem(data) {
+      const handle = await getFileHandle(true);
+      if (!handle) return false;
+      const permission = await ensurePermission(handle, "readwrite");
+      if (permission !== "granted") return false;
+      try {
+        const writable = await handle.createWritable();
+        await writable.write(JSON.stringify(data, null, 2));
+        await writable.close();
+        return true;
+      } catch (err) {
+        console.warn("Failed to write persistent tasks", err);
+        return false;
+      }
+    }
+
+    function enqueueWrite(fn) {
+      writeQueue = writeQueue.then(() => fn()).catch(err => {
+        console.warn("Persistent write failed", err);
+        return false;
+      });
+      return writeQueue;
+    }
+
+    function readFromLocalStorage() {
+      try {
+        const raw = localStorage.getItem(localStorageKey);
+        if (!raw) return [];
+        return JSON.parse(raw);
+      } catch (err) {
+        console.warn("Failed to read tasks from localStorage", err);
+        return [];
+      }
+    }
+
+    function writeToLocalStorage(data) {
+      try {
+        localStorage.setItem(localStorageKey, JSON.stringify(data));
+        return true;
+      } catch (err) {
+        console.warn("Failed to write tasks to localStorage", err);
+        return false;
+      }
+    }
+
+    async function ensurePersistence() {
+      if (navigator.storage?.persist) {
+        try {
+          await navigator.storage.persist();
+        } catch {}
+      }
+    }
+
+    return {
+      async load() {
+        await ensurePersistence();
+        let data = null;
+        if (supportsOPFS) {
+          data = await readFromFileSystem();
+          if (data != null) {
+            writeToLocalStorage(data);
+            return data;
+          }
+        }
+        data = readFromLocalStorage();
+        if (supportsOPFS && data != null) {
+          await writeToFileSystem(data);
+        }
+        return Array.isArray(data) ? data : [];
+      },
+      async save(data) {
+        const payload = Array.isArray(data) ? data : [];
+        let wrote = false;
+        if (supportsOPFS) {
+          wrote = await enqueueWrite(() => writeToFileSystem(payload));
+        }
+        writeToLocalStorage(payload);
+        if (!wrote && supportsOPFS) {
+          await ensurePersistence();
+        }
+      }
+    };
   }
 
   function initPersistenceControls(){
