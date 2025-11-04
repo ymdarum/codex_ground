@@ -35,7 +35,16 @@ a{color:var(--accent)}
   display:flex; align-items:center; justify-content:space-between;
   padding:12px 16px; background:var(--card); border-bottom:1px solid var(--border);
 }
-.app-footer{border-top:1px solid var(--border); border-bottom:none; margin-top:auto}
+.app-footer{
+  border-top:1px solid var(--border); border-bottom:none; margin-top:auto;
+  flex-wrap:wrap; gap:12px;
+}
+
+.storage-info{display:flex; gap:8px; align-items:center; font-size:.85rem; color:var(--muted)}
+.storage-info button{
+  background:transparent; color:var(--fg); border:1px solid var(--border);
+  padding:6px 10px; border-radius:8px;
+}
 
 .brand{display:flex; gap:8px; align-items:center}
 .brand .logo{font-size:1.4rem}

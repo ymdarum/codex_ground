@@ -25,6 +25,8 @@
   const importFile = $("#importFile");
   const seedBtn = $("#seedBtn");
   const themeToggle = $("#themeToggle");
+  const storageStatus = $("#storageStatus");
+  const storagePersistBtn = $("#storagePersistBtn");
 
   // Theme
   const savedTheme = localStorage.getItem(themeKey);
@@ -36,6 +38,8 @@
     localStorage.setItem(themeKey, light ? "light" : "dark");
     themeToggle.textContent = light ? "☀️" : "🌙";
   });
+
+  initPersistenceControls();
 
   // Add task
   addForm.addEventListener("submit", async e => {
@@ -281,6 +285,53 @@
   }
   function saveTasks(){
     localStorage.setItem(storeKey, JSON.stringify(tasks));
+  }
+
+  function initPersistenceControls(){
+    if (!storageStatus) return;
+    if (!navigator.storage || !navigator.storage.persist || !navigator.storage.persisted) {
+      storageStatus.textContent = "Storage persistence not supported in this browser.";
+      if (storagePersistBtn) storagePersistBtn.remove();
+      return;
+    }
+
+    const updateStatus = async () => {
+      try {
+        const persisted = await navigator.storage.persisted();
+        if (persisted) {
+          storageStatus.textContent = "Tasks are protected from automatic browser cleanup.";
+          if (storagePersistBtn) {
+            storagePersistBtn.disabled = true;
+            storagePersistBtn.textContent = "Data already protected";
+          }
+        } else {
+          storageStatus.textContent = "Tasks might be cleared if the browser needs space.";
+          if (storagePersistBtn) {
+            storagePersistBtn.disabled = false;
+            storagePersistBtn.textContent = "Keep data on this device";
+          }
+        }
+      } catch (err) {
+        storageStatus.textContent = "Unable to verify storage persistence.";
+        if (storagePersistBtn) storagePersistBtn.disabled = true;
+      }
+    };
+
+    if (storagePersistBtn) {
+      storagePersistBtn.addEventListener("click", async () => {
+        try {
+          const granted = await navigator.storage.persist();
+          if (!granted) {
+            alert("Your browser declined persistent storage. Try installing the app or adjusting site settings.");
+          }
+        } catch (err) {
+          alert("Could not request persistent storage: " + err.message);
+        }
+        updateStatus();
+      });
+    }
+
+    updateStatus();
   }
 
   function parseTags(text){

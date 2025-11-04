@@ -14,6 +14,7 @@ A tiny, **offline‑first**, no‑backend **todo app** you can publish straight 
 - ✅ Import / export tasks as JSON
 - ✅ Works **offline** (service worker)
 - ✅ **PWA**: Add to Home Screen (iOS & Android)
+- ✅ Ask the browser for **persistent storage** so tasks survive automatic cleanups
 
 ## Live Demo (after you enable Pages)
 Your site will be available at: `https://<your-username>.github.io/<your-repo>/`
@@ -53,6 +54,7 @@ Your site will be available at: `https://<your-username>.github.io/<your-repo>/`
 
 ## 2) Local Usage (no server needed)
 Just open `index.html` in any browser. Tasks are saved to `localStorage` in your device.
+Use the **Keep data on this device** button in the footer to request persistent storage so the browser keeps your list even when space runs low.
 
 ## 3) Project Structure
 ```
@@ -83,7 +85,7 @@ todobreeze-pwa/
 - **Sample data**: click **load sample data** under the task list.
 
 ## 5) Privacy
-All data lives **only in your browser** (`localStorage`). No servers, no tracking.
+All data lives **only in your browser** (`localStorage`). Tap **Keep data on this device** to ask your browser to protect the stored tasks from automatic cleanup. No servers, no tracking.
 
 ## 6) Customize
 - Change colors in `style.css`.
