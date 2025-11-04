@@ -66,12 +66,21 @@
     }
 
     const now = Date.now();
-    tasks.push({
-      id: String(now) + "-" + Math.random().toString(36).slice(2,8),
-      title, notes: "", due, priority, tags: allTags, completed: false,
-      createdAt: now, updatedAt: now,
+    const created = normalizeTask({
+      id: makeId(),
+      title,
+      notes: "",
+      due,
+      priority,
+      tags: allTags,
+      completed: false,
+      createdAt: now,
+      updatedAt: now,
       attachment
     });
+    created.createdAt = now;
+    created.updatedAt = now;
+    tasks.push(created);
     saveTasks();
     addForm.reset();
     if (imageInput) imageInput.value = "";
@@ -97,12 +106,18 @@
       const text = await file.text();
       const imported = JSON.parse(text);
       if(!Array.isArray(imported)) throw new Error("Invalid file format");
-      const existing = new Map(tasks.map(t => [t.id, t]));
-      for(const t of imported){
-        if(!t.id) t.id = String(Date.now()) + "-" + Math.random().toString(36).slice(2,8);
-        existing.set(t.id, {...existing.get(t.id), ...t, updatedAt: Date.now()});
+      const now = Date.now();
+      const merged = new Map(tasks.map(t => [t.id, normalizeTask(t)]));
+      for (const raw of imported) {
+        const task = typeof raw === "object" && raw ? {...raw} : {};
+        task.id = typeof task.id === "string" && task.id ? task.id : makeId();
+        const existing = merged.get(task.id);
+        const normalized = normalizeTask({...existing, ...task, id: task.id});
+        normalized.createdAt = existing?.createdAt ?? normalized.createdAt ?? now;
+        normalized.updatedAt = now;
+        merged.set(normalized.id, normalized);
       }
-      tasks = Array.from(existing.values());
+      tasks = Array.from(merged.values());
       saveTasks();
       render();
     } catch(err){
@@ -118,7 +133,11 @@
       try{
         const res = await fetch("./data/sample-tasks.json");
         const sample = await res.json();
-        tasks = sample.map(t => ({...t, id: t.id || String(Date.now()) + Math.random().toString(36).slice(2,8)}));
+        tasks = sample.map(entry => {
+          const raw = typeof entry === "object" && entry ? {...entry} : {};
+          raw.id = typeof raw.id === "string" && raw.id ? raw.id : makeId();
+          return normalizeTask(raw);
+        });
         saveTasks();
         render();
       }catch(err){
@@ -276,15 +295,27 @@
 
   function loadTasks(){
     try{
-      return JSON.parse(localStorage.getItem(storeKey)) || [];
-    }catch{ return []; }
+      const raw = JSON.parse(localStorage.getItem(storeKey));
+      if (!Array.isArray(raw)) return [];
+      return raw.map(normalizeTask).filter(Boolean);
+    }catch{
+      return [];
+    }
   }
   function saveTasks(){
+    tasks = tasks.map(normalizeTask).filter(Boolean);
     localStorage.setItem(storeKey, JSON.stringify(tasks));
   }
 
-  function parseTags(text){
-    return (text||"")
+  function parseTags(input){
+    if (Array.isArray(input)) {
+      return input
+        .map(x => x == null ? "" : String(x))
+        .map(x => x.trim())
+        .filter(Boolean)
+        .map(x => x.replace(/^#/, ""));
+    }
+    return String(input ?? "")
       .split(",")
       .map(s => s.trim())
       .filter(Boolean)
@@ -313,6 +344,47 @@
       reader.onerror = () => reject(reader.error || new Error("Failed to read file"));
       reader.readAsDataURL(file);
     });
+  }
+
+  function makeId(){
+    return String(Date.now()) + "-" + Math.random().toString(36).slice(2,8);
+  }
+
+  function normalizeTask(raw){
+    if (!raw || typeof raw !== "object") return null;
+    const now = Date.now();
+    const priority = typeof raw.priority === "string" ? raw.priority.toLowerCase().trim() : raw.priority;
+    const createdAt = typeof raw.createdAt === "number" ? raw.createdAt : Number(raw.createdAt);
+    const updatedAt = typeof raw.updatedAt === "number" ? raw.updatedAt : Number(raw.updatedAt);
+    const normalized = {
+      id: typeof raw.id === "string" && raw.id ? raw.id : makeId(),
+      title: typeof raw.title === "string" ? raw.title.trim() : "",
+      notes: typeof raw.notes === "string" ? raw.notes : "",
+      due: raw.due ? String(raw.due).slice(0,10) : null,
+      priority: ["high","medium","low","none"].includes(priority) ? priority : "none",
+      tags: parseTags(raw.tags),
+      completed: !!raw.completed,
+      createdAt: Number.isFinite(createdAt) ? createdAt : now,
+      updatedAt: Number.isFinite(updatedAt) ? updatedAt : now
+    };
+    if (!normalized.title) normalized.title = "Untitled task";
+    normalized.tags = Array.from(new Set(normalized.tags));
+    if (normalized.due && !/^\d{4}-\d{2}-\d{2}$/.test(normalized.due)) {
+      normalized.due = null;
+    }
+    const attachment = raw.attachment;
+    if (attachment && typeof attachment === "object" && typeof attachment.data === "string") {
+      normalized.attachment = {
+        name: typeof attachment.name === "string" ? attachment.name : "",
+        type: typeof attachment.type === "string" ? attachment.type : "",
+        size: typeof attachment.size === "number" ? attachment.size : 0,
+        data: attachment.data
+      };
+      if (!normalized.attachment.name) delete normalized.attachment.name;
+      if (!normalized.attachment.type) delete normalized.attachment.type;
+      if (!normalized.attachment.size) delete normalized.attachment.size;
+    }
+    return normalized;
   }
 
   // Initial render
