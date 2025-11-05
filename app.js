@@ -776,17 +776,17 @@
     updateStatus();
   }
 
-  function parseTags(text){
-    return (text||"")
   function parseTags(input){
     if (Array.isArray(input)) {
       return input
-        .map(x => x == null ? "" : String(x))
-        .map(x => x.trim())
-        .filter(Boolean)
-        .map(x => x.replace(/^#/, ""));
+        .flatMap(value => parseTags(value))
+        .filter(Boolean);
     }
-    return String(input ?? "")
+    if (input == null) return [];
+    if (typeof input === "object") {
+      return parseTags(Object.values(input));
+    }
+    return String(input)
       .split(",")
       .map(s => s.trim())
       .filter(Boolean)
