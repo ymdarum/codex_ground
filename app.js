@@ -398,6 +398,7 @@
     left.appendChild(cb);
 
     const mid = document.createElement("div");
+    mid.className = "middle";
     const title = document.createElement("div");
     title.className = "title";
     title.textContent = t.title;
@@ -1107,6 +1108,36 @@
 
   async function populateLastUpdatedDate() {
     if (!lastUpdatedEl) return;
+
+    const setState = (state) => {
+      if (!updateNote) return;
+      if (!state) {
+        delete updateNote.dataset.state;
+        return;
+      }
+      updateNote.dataset.state = state;
+    };
+
+    const applyDate = (date, state = "fresh") => {
+      if (!date) return false;
+      const formatted = date.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+      lastUpdatedEl.textContent = formatted;
+      lastUpdatedEl.setAttribute("datetime", date.toISOString());
+      setState(state);
+      return true;
+    };
+
+    const tryUseDocumentDate = (state = "local") => {
+      if (typeof document === "undefined") return false;
+      const raw = document.lastModified;
+      if (!raw) return false;
+      const parsed = new Date(raw);
+      if (Number.isNaN(parsed.getTime())) return false;
+      return applyDate(parsed, state);
+    };
+
+    let hadError = false;
+    let usedFallback = tryUseDocumentDate();
     const assetCandidates = [
       "./index.html",
       "./app.js",
@@ -1127,7 +1158,6 @@
       return true;
     });
 
-    let hadError = false;
     const fetchLastModified = async (url) => {
       try {
         let res = await fetch(url, { method: "HEAD", cache: "no-store" });
@@ -1161,22 +1191,24 @@
     }, null);
 
     if (latest) {
-      const formatted = latest.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
-      lastUpdatedEl.textContent = formatted;
-      lastUpdatedEl.setAttribute("datetime", latest.toISOString());
-    } else {
-      const offline = typeof navigator !== "undefined" && navigator && navigator.onLine === false;
-      const fallbackText = offline && hadError ? "Offline" : "Unavailable";
-      lastUpdatedEl.textContent = fallbackText;
-      if (fallbackText === "Unavailable") {
-        lastUpdatedEl.removeAttribute("datetime");
-      } else {
-        lastUpdatedEl.setAttribute("datetime", "");
-      }
-      if (updateNote && updateNote.textContent) {
-        updateNote.dataset.state = fallbackText.toLowerCase();
-      }
+      applyDate(latest);
+      return;
     }
+
+    if (!usedFallback) {
+      usedFallback = tryUseDocumentDate();
+      if (usedFallback) return;
+    }
+
+    const offline = typeof navigator !== "undefined" && navigator && navigator.onLine === false;
+    const fallbackText = offline && hadError ? "Offline" : "Unavailable";
+    lastUpdatedEl.textContent = fallbackText;
+    if (fallbackText === "Unavailable") {
+      lastUpdatedEl.removeAttribute("datetime");
+    } else {
+      lastUpdatedEl.setAttribute("datetime", "");
+    }
+    setState(fallbackText.toLowerCase());
   }
 
   // Initial render

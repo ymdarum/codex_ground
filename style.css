@@ -94,6 +94,7 @@ button.linklike{background:none; border:none; padding:0; color:var(--accent)}
   border:1px solid var(--border); border-radius:12px; padding:10px; background:rgba(255,255,255,0.02)
 }
 .task .left{display:flex; flex-direction:column; align-items:center; gap:4px}
+.task .middle{min-width:0}
 .task.dragging{opacity:.4}
 .task .title{font-weight:600}
 .task .meta{font-size:.85rem; color:var(--muted); display:flex; flex-wrap:wrap; gap:8px}
@@ -114,7 +115,7 @@ button.linklike{background:none; border:none; padding:0; color:var(--accent)}
 .badge.warn{color:var(--warn)}
 .badge.bad{color:var(--bad)}
 
-.task .actions{display:flex; gap:6px}
+.task .actions{display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end}
 .task .actions button{padding:6px 8px}
 .task .actions .secondary{background:transparent; border-color:var(--border); color:var(--muted)}
 
@@ -131,3 +132,10 @@ button.linklike{background:none; border:none; padding:0; color:var(--accent)}
 .sr-only{position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; clip-path:inset(50%)}
 
 .app-footer{gap:12px; flex-wrap:wrap}
+
+@media(max-width:700px){
+  .task{grid-template-columns:auto 1fr; grid-template-areas:"left middle" "actions actions"; align-items:flex-start}
+  .task .left{grid-area:left; flex-direction:row; align-items:center; gap:6px}
+  .task .middle{grid-area:middle}
+  .task .actions{grid-area:actions; justify-content:flex-start}
+}
