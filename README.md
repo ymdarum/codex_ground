@@ -12,6 +12,7 @@ A tiny, **offline‑first**, no‑backend **todo app** you can publish straight 
 - ✅ Search, filter (by tag & date), and sort
 - ✅ Dark / light theme toggle (persists)
 - ✅ Import / export tasks as JSON
+- ✅ Calendar export (.ics) that works even when installed as an iOS PWA
 - ✅ Works **offline** (service worker)
 - ✅ **PWA**: Add to Home Screen (iOS & Android)
 - ✅ Ask the browser for **persistent storage** so tasks survive automatic cleanups
@@ -112,8 +113,8 @@ MIT — see `LICENSE`.
 - `docs: add README & changelog`
 
 ## Roadmap Ideas
-- [ ] Reorder tasks via drag‑and‑drop
-- [ ] Subtasks & checklists
-- [ ] Recurring tasks (daily/weekly/monthly)
-- [ ] Reminders via calendar export (.ics)
-- [ ] Multi‑device sync via GitHub Gists or a tiny server (optional)
+- [ ] Quick share sheet export to Notes / Reminders
+- [ ] Optional push reminders using web notifications
+- [ ] Collaborative lists via shared link + passcode
+- [ ] Markdown support for notes and subtasks
+- [ ] Native iCloud / Google Drive backup integration
