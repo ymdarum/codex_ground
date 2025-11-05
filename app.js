@@ -29,6 +29,8 @@
   const imageInput = $("#imageInput");
   const listEl = $("#taskList");
   const emptyState = $("#emptyState");
+  const updateNote = $(".update-note");
+  const lastUpdatedEl = $("#lastUpdatedDate");
 
   const searchInput = $("#searchInput");
   const filterTag = $("#filterTag");
@@ -53,6 +55,7 @@
   });
 
   initPersistenceControls();
+  populateLastUpdatedDate();
 
   async function downloadTextFile({text, fileName, mimeType}) {
     const blob = new Blob([text], {type: mimeType});
@@ -1100,6 +1103,80 @@
     const base = sanitize(value);
     const fb = sanitize(fallback) || "file";
     return base || fb;
+  }
+
+  async function populateLastUpdatedDate() {
+    if (!lastUpdatedEl) return;
+    const assetCandidates = [
+      "./index.html",
+      "./app.js",
+      "./style.css",
+      "./sw.js",
+      "./manifest.webmanifest",
+      "./CHANGELOG.md",
+      "./README.md",
+      "./data/sample-tasks.json",
+      "./data/Sample.txt",
+      "./icons/icon-192.png"
+    ];
+
+    const seen = new Set();
+    const assets = assetCandidates.filter((path) => {
+      if (seen.has(path)) return false;
+      seen.add(path);
+      return true;
+    });
+
+    let hadError = false;
+    const fetchLastModified = async (url) => {
+      try {
+        let res = await fetch(url, { method: "HEAD", cache: "no-store" });
+        if (!res.ok && res.status !== 405 && res.status !== 501) {
+          hadError = true;
+          return null;
+        }
+        if (!res.ok) {
+          res = await fetch(url, { cache: "no-store" });
+        }
+        if (!res.ok) {
+          hadError = true;
+          return null;
+        }
+        const header = res.headers.get("Last-Modified") || res.headers.get("last-modified");
+        if (!header) return null;
+        const parsed = new Date(header);
+        return Number.isNaN(parsed.getTime()) ? null : parsed;
+      } catch (err) {
+        hadError = true;
+        console.warn("Unable to determine last update for", url, err);
+        return null;
+      }
+    };
+
+    const results = await Promise.all(assets.map(fetchLastModified));
+    const latest = results.reduce((acc, date) => {
+      if (!date) return acc;
+      if (!acc || date > acc) return date;
+      return acc;
+    }, null);
+
+    if (latest) {
+      const formatted = latest.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+      lastUpdatedEl.textContent = formatted;
+      lastUpdatedEl.setAttribute("datetime", latest.toISOString());
+    } else {
+      const offline = typeof navigator !== "undefined" && navigator && navigator.onLine === false;
+      const fallbackText = offline && hadError ? "Offline" : "Unavailable";
+      lastUpdatedEl.textContent = fallbackText;
+      if (fallbackText === "Unavailable") {
+        lastUpdatedEl.removeAttribute("datetime");
+      } else {
+        lastUpdatedEl.setAttribute("datetime", "");
+      }
+      if (updateNote && updateNote.textContent) {
+        updateNote.dataset.state = fallbackText.toLowerCase();
+      }
+    }
   }
 
   // Initial render
