@@ -519,7 +519,24 @@
     });
     right.appendChild(delBtn);
 
-    li.appendChild(left); li.appendChild(mid); li.appendChild(right);
+    const calendarBtn = document.createElement("button");
+    calendarBtn.type = "button";
+    calendarBtn.textContent = "Export calendar";
+    calendarBtn.className = "secondary";
+    calendarBtn.addEventListener("click", async () => {
+      const singleIcs = buildICS([t]);
+      const slug = makeFileSafeSlug(t.title, "task");
+      await downloadTextFile({
+        text: singleIcs,
+        fileName: `${slug}-todo-breeze.ics`,
+        mimeType: "text/calendar"
+      });
+    });
+    right.appendChild(calendarBtn);
+
+    li.appendChild(left);
+    li.appendChild(mid);
+    li.appendChild(right);
     return li;
   }
 
@@ -1061,6 +1078,11 @@
       if (!normalized.attachment.size) delete normalized.attachment.size;
     }
     return normalized;
+  }
+
+  function makeFileSafeSlug(value, fallback="file"){
+    const base = String(value ?? "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+    return base || fallback;
   }
 
   // Initial render
