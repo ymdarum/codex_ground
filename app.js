@@ -37,6 +37,7 @@
 
   const exportBtn = $("#exportBtn");
   const icsExportBtn = $("#icsExportBtn");
+  const calendarMimeType = "text/calendar;charset=utf-8";
   const importFile = $("#importFile");
   const seedBtn = $("#seedBtn");
   const themeToggle = $("#themeToggle");
@@ -223,7 +224,7 @@
       await downloadTextFile({
         text: ics,
         fileName: "todo-breeze-reminders.ics",
-        mimeType: "text/calendar"
+        mimeType: calendarMimeType
       });
     });
   }
@@ -525,11 +526,11 @@
     calendarBtn.className = "secondary";
     calendarBtn.addEventListener("click", async () => {
       const singleIcs = buildICS([t]);
-      const slug = makeFileSafeSlug(t.title, "task");
+      const slug = makeFileSafeSlug(t.title, `task-${String(t.id || "").slice(-6) || makeId().slice(-6)}`);
       await downloadTextFile({
         text: singleIcs,
         fileName: `${slug}-todo-breeze.ics`,
-        mimeType: "text/calendar"
+        mimeType: calendarMimeType
       });
     });
     right.appendChild(calendarBtn);
@@ -1001,7 +1002,21 @@
       lines.push("BEGIN:VTODO");
       lines.push("UID:" + escapeICS(task.id + "@todo-breeze"));
       lines.push("DTSTAMP:" + now);
-      if (task.due) lines.push("DUE;VALUE=DATE:" + task.due.replace(/-/g, ""));
+      const createdAt = Number.isFinite(task.createdAt) ? new Date(task.createdAt) : null;
+      if (createdAt) {
+        lines.push("CREATED:" + formatICSDate(createdAt));
+        lines.push("LAST-MODIFIED:" + formatICSDate(createdAt));
+      }
+      if (task.updatedAt && (!createdAt || task.updatedAt !== task.createdAt)) {
+        lines.push("LAST-MODIFIED:" + formatICSDate(new Date(task.updatedAt)));
+      }
+      if (task.due) {
+        const dueDate = task.due.replace(/-/g, "");
+        lines.push("DTSTART;VALUE=DATE:" + dueDate);
+        lines.push("DUE;VALUE=DATE:" + dueDate);
+      } else if (createdAt) {
+        lines.push("DTSTART:" + formatICSDate(createdAt));
+      }
       lines.push("SUMMARY:" + escapeICS(task.title));
       if (task.notes) lines.push("DESCRIPTION:" + escapeICS(task.notes));
       if (Array.isArray(task.tags) && task.tags.length) {
@@ -1017,7 +1032,7 @@
       lines.push("END:VTODO");
     });
     lines.push("END:VCALENDAR");
-    return lines.join("\r\n");
+    return lines.join("\r\n") + "\r\n";
   }
 
   function fileToDataURL(file){
@@ -1081,8 +1096,10 @@
   }
 
   function makeFileSafeSlug(value, fallback="file"){
-    const base = String(value ?? "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
-    return base || fallback;
+    const sanitize = (input) => String(input ?? "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+    const base = sanitize(value);
+    const fb = sanitize(fallback) || "file";
+    return base || fb;
   }
 
   // Initial render
