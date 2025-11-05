@@ -1127,17 +1127,56 @@
       return true;
     };
 
-    const tryUseDocumentDate = (state = "local") => {
-      if (typeof document === "undefined") return false;
+    const getDocumentDate = () => {
+      if (typeof document === "undefined") return null;
       const raw = document.lastModified;
-      if (!raw) return false;
+      if (!raw) return null;
       const parsed = new Date(raw);
-      if (Number.isNaN(parsed.getTime())) return false;
-      return applyDate(parsed, state);
+      if (Number.isNaN(parsed.getTime())) return null;
+      return parsed;
     };
 
     let hadError = false;
-    let usedFallback = tryUseDocumentDate();
+    let bestDate = null;
+    let bestState = "fresh";
+    const updateBest = (date, state = "fresh") => {
+      if (!date) return;
+      if (!bestDate || date > bestDate) {
+        bestDate = date;
+        bestState = state;
+      }
+    };
+
+    const docDate = getDocumentDate();
+    if (docDate) {
+      applyDate(docDate, "local");
+      updateBest(docDate, "local");
+    }
+
+    const fetchLatestChangelogDate = async () => {
+      const url = "./CHANGELOG.md";
+      try {
+        const res = await fetch(url, { cache: "no-store" });
+        if (!res.ok) {
+          if (res.status !== 404) hadError = true;
+          return null;
+        }
+        const text = await res.text();
+        const match = text.match(/^##\s+\[[^\]]+\]\s+-\s+(\d{4}-\d{2}-\d{2})/m);
+        if (!match) return null;
+        const [year, month, day] = match[1].split("-").map(Number);
+        if ([year, month, day].some((value) => Number.isNaN(value))) return null;
+        return new Date(year, month - 1, day);
+      } catch (err) {
+        hadError = true;
+        console.warn("Unable to read changelog for update date", err);
+        return null;
+      }
+    };
+
+    const changelogDate = await fetchLatestChangelogDate();
+    updateBest(changelogDate, "release");
+
     const assetCandidates = [
       "./index.html",
       "./app.js",
@@ -1184,20 +1223,11 @@
     };
 
     const results = await Promise.all(assets.map(fetchLastModified));
-    const latest = results.reduce((acc, date) => {
-      if (!date) return acc;
-      if (!acc || date > acc) return date;
-      return acc;
-    }, null);
+    results.forEach((date) => updateBest(date));
 
-    if (latest) {
-      applyDate(latest);
+    if (bestDate) {
+      applyDate(bestDate, bestState);
       return;
-    }
-
-    if (!usedFallback) {
-      usedFallback = tryUseDocumentDate();
-      if (usedFallback) return;
     }
 
     const offline = typeof navigator !== "undefined" && navigator && navigator.onLine === false;
