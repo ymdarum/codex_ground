@@ -53,6 +53,42 @@
 
   initPersistenceControls();
 
+  function downloadTextFile({text, fileName, mimeType}) {
+    if (!shouldUseDataUrlDownload()) {
+      const blob = new Blob([text], {type: mimeType});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      return;
+    }
+    const dataUrl = `data:${mimeType};charset=utf-8,${encodeURIComponent(text)}`;
+    try {
+      const win = window.open(dataUrl, "_blank");
+      if (!win) {
+        window.location.href = dataUrl;
+      }
+    } catch(err) {
+      window.location.href = dataUrl;
+    }
+  }
+
+  function shouldUseDataUrlDownload() {
+    return isIOS() && isStandaloneDisplayMode();
+  }
+
+  function isIOS() {
+    return /iP(ad|hone|od)/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  }
+
+  function isStandaloneDisplayMode() {
+    return window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
+  }
+
   // Add task
   addForm.addEventListener("submit", async e => {
     e.preventDefault();
@@ -114,29 +150,21 @@
   // Export / Import
   exportBtn.addEventListener("click", async () => {
     await ready;
-    const blob = new Blob([JSON.stringify(tasks, null, 2)], {type: "application/json"});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "todo-breeze-tasks.json";
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
+    downloadTextFile({
+      text: JSON.stringify(tasks, null, 2),
+      fileName: "todo-breeze-tasks.json",
+      mimeType: "application/json"
+    });
   });
   if (icsExportBtn) {
     icsExportBtn.addEventListener("click", async () => {
       await ready;
       const ics = buildICS(tasks);
-      const blob = new Blob([ics], {type: "text/calendar"});
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "todo-breeze-reminders.ics";
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
+      downloadTextFile({
+        text: ics,
+        fileName: "todo-breeze-reminders.ics",
+        mimeType: "text/calendar"
+      });
     });
   }
   importFile.addEventListener("change", async (e) => {
