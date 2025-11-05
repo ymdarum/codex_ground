@@ -53,9 +53,15 @@
 
   initPersistenceControls();
 
-  function downloadTextFile({text, fileName, mimeType}) {
+  async function downloadTextFile({text, fileName, mimeType}) {
+    const blob = new Blob([text], {type: mimeType});
+
+    if (shouldTryShareDownload()) {
+      const shared = await tryShareFile(blob, fileName);
+      if (shared) return;
+    }
+
     if (!shouldUseDataUrlDownload()) {
-      const blob = new Blob([text], {type: mimeType});
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -66,6 +72,7 @@
       URL.revokeObjectURL(url);
       return;
     }
+
     const dataUrl = `data:${mimeType};charset=utf-8,${encodeURIComponent(text)}`;
     try {
       const win = window.open(dataUrl, "_blank");
@@ -78,7 +85,7 @@
   }
 
   function shouldUseDataUrlDownload() {
-    return isIOS() && isStandaloneDisplayMode();
+    return isIOS() && isStandaloneDisplayMode() && !canUseFileSharing();
   }
 
   function isIOS() {
@@ -87,6 +94,59 @@
 
   function isStandaloneDisplayMode() {
     return window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
+  }
+
+  function shouldTryShareDownload() {
+    return isIOS() && canUseFileSharing();
+  }
+
+  let cachedFileShareSupport = null;
+
+  function canUseFileSharing() {
+    if (cachedFileShareSupport != null) return cachedFileShareSupport;
+    if (typeof navigator === "undefined") return (cachedFileShareSupport = false);
+    if (typeof navigator.share !== "function") return (cachedFileShareSupport = false);
+    if (typeof File !== "function") return (cachedFileShareSupport = false);
+    const hasCanShare = typeof navigator.canShare === "function";
+    if (hasCanShare) {
+      try {
+        cachedFileShareSupport = navigator.canShare({ files: [new File([""], "placeholder.txt", { type: "text/plain" })] });
+        return cachedFileShareSupport;
+      } catch (err) {
+        cachedFileShareSupport = false;
+        return cachedFileShareSupport;
+      }
+    }
+    cachedFileShareSupport = true;
+    return cachedFileShareSupport;
+  }
+
+  async function tryShareFile(blob, fileName) {
+    if (!canUseFileSharing()) return false;
+    let file;
+    try {
+      file = new File([blob], fileName, { type: blob.type || "application/octet-stream" });
+    } catch (err) {
+      console.warn("Unable to create shareable file", err);
+      cachedFileShareSupport = false;
+      return false;
+    }
+    const shareData = { files: [file], title: fileName, text: "" };
+    if (typeof navigator.canShare === "function" && !navigator.canShare(shareData)) {
+      cachedFileShareSupport = false;
+      return false;
+    }
+    try {
+      await navigator.share(shareData);
+      return true;
+    } catch (err) {
+      if (err && err.name === "AbortError") {
+        return true;
+      }
+      console.warn("File share failed", err);
+      cachedFileShareSupport = false;
+      return false;
+    }
   }
 
   // Add task
@@ -150,7 +210,7 @@
   // Export / Import
   exportBtn.addEventListener("click", async () => {
     await ready;
-    downloadTextFile({
+    await downloadTextFile({
       text: JSON.stringify(tasks, null, 2),
       fileName: "todo-breeze-tasks.json",
       mimeType: "application/json"
@@ -160,7 +220,7 @@
     icsExportBtn.addEventListener("click", async () => {
       await ready;
       const ics = buildICS(tasks);
-      downloadTextFile({
+      await downloadTextFile({
         text: ics,
         fileName: "todo-breeze-reminders.ics",
         mimeType: "text/calendar"
