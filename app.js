@@ -1120,9 +1120,12 @@
 
     const applyDate = (date, state = "fresh") => {
       if (!date) return false;
-      const formatted = date.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+      const formattedDate = date.toLocaleDateString(undefined, { dateStyle: "medium" });
+      const formattedTime = date.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+      const formatted = `${formattedDate} • ${formattedTime}`;
       lastUpdatedEl.textContent = formatted;
       lastUpdatedEl.setAttribute("datetime", date.toISOString());
+      lastUpdatedEl.setAttribute("title", date.toLocaleString());
       setState(state);
       return true;
     };
@@ -1238,6 +1241,7 @@
     } else {
       lastUpdatedEl.setAttribute("datetime", "");
     }
+    lastUpdatedEl.removeAttribute("title");
     setState(fallbackText.toLowerCase());
   }
 
